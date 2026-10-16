@@ -5,7 +5,7 @@ A **free-to-play** memecoin community arcade with a dark neon degen look. Player
 > **No purchase necessary. Credits have no cash value and can't be bought or withdrawn.** There are no deposits, no payments and no withdrawals anywhere in the code.
 
 ## Features
-- **Sign in**: connect a **Phantom** Solana wallet and sign a message (ed25519 verified on the server; no transactions, no approvals). You can also use a username and password.
+- **Sign in**: connect **Phantom, Solflare, Backpack or any Wallet Standard** Solana wallet (wallet picker; on mobile without a wallet, deep links open the site in Phantom/Solflare in-app browsers) and sign a message (ed25519 verified on the server; no transactions, no approvals). You can also use a username and password.
 - **Free credits**: 1,000 on signup, plus 500 free every 24h.
 - **Crash**: animated multiplier curve, manual or auto cash out. The server clock decides results; the client just draws them.
 - **Coinflip**: pays 1.96×.

@@ -74,15 +74,24 @@ $('#loginTop').onclick = openAuth; $('#heroCta').onclick = () => me ? (location.
 $('#authModal').onclick = e => { if (e.target.id === 'authModal') closeAuth(); };
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 function b58(bytes) { let n = 0n; for (const b of bytes) n = n * 256n + BigInt(b); let s = ''; while (n > 0n) { s = B58[Number(n % 58n)] + s; n /= 58n; } for (const b of bytes) { if (b) break; s = '1' + s; } return s; }
-$('#phantomBtn').onclick = async () => {
-  const p = window.phantom?.solana || window.solana;
-  if (!p?.isPhantom) { window.open('https://phantom.app/', '_blank'); return $('#loginErr').textContent = 'Phantom not detected. Install it or use a username.'; }
-  try { const { publicKey } = await p.connect(); const address = publicKey.toString();
+function openWallets() {
+  const ws = TWWallets.list(), mobile = TWWallets.isMobile(); $('#wErr').textContent = '';
+  $('#wList').innerHTML = ws.map((w, i) => `<${w.detected ? 'button' : 'a'} class="wopt" data-w="${i}" ${w.href ? `href="${esc(w.href)}" ${mobile ? '' : 'target="_blank" rel="noopener"'}` : ''}>${w.img ? `<img src="${esc(w.img)}" alt="">` : `<span class="wi">${w.icon}</span>`}<span>${esc(w.name)}</span><span class="st ${w.detected ? 'det' : ''}">${w.detected ? 'Detected' : w.label}</span></${w.detected ? 'button' : 'a'}>`).join('');
+  $('#wMobileHint').textContent = mobile && !ws.some(w => w.detected) ? 'On mobile, tap a wallet to open TrenchWars in its in-app browser, then sign in there. Mobile Safari and Chrome can\'t use wallet extensions.' : '';
+  $$('#wList button.wopt').forEach(b => b.onclick = () => walletLogin(ws[+b.dataset.w], b));
+  $('#authModal').classList.add('hide'); $('#wModal').classList.remove('hide');
+}
+async function walletLogin(w, el) {
+  el.classList.add('busy'); $('#wErr').textContent = '';
+  try { const address = await w.adapter.connect();
     const { message } = await api('/api/auth/nonce?address=' + address);
-    const { signature } = await p.signMessage(new TextEncoder().encode(message), 'utf8');
-    await api('/api/auth/wallet', { address, signature: b58(signature), ref: localStorage.tw_ref }); welcome();
-  } catch (e) { $('#loginErr').textContent = e.message; }
-};
+    const sig = await w.adapter.sign(new TextEncoder().encode(message));
+    await api('/api/auth/wallet', { address, signature: b58(sig), ref: localStorage.tw_ref }); $('#wModal').classList.add('hide'); welcome();
+  } catch (e) { $('#wErr').textContent = e?.message || 'Wallet request was rejected'; } finally { el.classList.remove('busy'); }
+}
+$('#walletBtn').onclick = openWallets;
+$('#wClose').onclick = () => { $('#wModal').classList.add('hide'); openAuth(); };
+$('#wModal').onclick = e => { if (e.target.id === 'wModal') $('#wModal').classList.add('hide'); };
 $('#userBtn').onclick = async () => { try { await api('/api/auth/username', { username: $('#uName').value.trim(), password: $('#uPass').value, ref: localStorage.tw_ref }); welcome(); } catch (e) { $('#loginErr').textContent = e.message; } };
 $('#uPass').onkeydown = e => { if (e.key === 'Enter') $('#userBtn').click(); };
 function welcome() { delete localStorage.tw_ref; toast(`Welcome, ${me.name}`, 'Your free credits are ready', '🪖', 'good'); confetti(); boot(); }

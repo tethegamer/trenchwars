@@ -134,9 +134,13 @@
 <div class="modal hide" id="authModal"><div class="card"><div class="hdr"><h2>Enter the trenches</h2><button class="ghost sm" onclick="closeAuth()">✕</button></div>
  <p class="tx2" style="margin-top:0">Get <b class="cr">1,000 free credits</b> now, and up to <b class="cr">1,500 free</b> every day.</p>
  <div id="refNote" class="notice hide" style="margin-bottom:12px">🤝 Invite applied: <b>+500 bonus credits</b></div>
- <button id="phantomBtn" class="vi block lg">👻 Connect Phantom</button><p class="muted" style="text-align:center;margin:8px 0 14px">You only sign a message. No transaction, no fees, no approvals.</p>
+ <button id="walletBtn" class="vi block lg">🔐 Connect Solana wallet</button><p class="muted" style="text-align:center;margin:8px 0 14px">You only sign a message. No transaction, no fees, no approvals.</p>
  <div class="row" style="margin:6px 0 14px"><hr class="f" style="border:0;border-top:1px solid var(--line2)"><span class="muted">or</span><hr class="f" style="border:0;border-top:1px solid var(--line2)"></div>
  <div class="grid" style="gap:8px"><input id="uName" placeholder="Username" autocomplete="username"><input id="uPass" type="password" placeholder="Password (6+ chars)" autocomplete="current-password"><button id="userBtn" class="block">Continue with username</button></div>
  <p id="loginErr" class="lose" style="min-height:20px"></p><p class="muted" style="text-align:center;margin:0">No purchase necessary. Credits have no cash value.</p></div></div>
+<div class="modal hide" id="wModal"><div class="card"><div class="hdr"><h2>Connect a wallet</h2><button class="ghost sm" id="wClose">✕</button></div>
+ <p class="muted" style="margin-top:0">You sign one message to prove you own the wallet. <b class="tx2">No transaction, no fees, no approvals.</b></p>
+ <div id="wList" class="wlist"></div><p id="wErr" class="lose" style="min-height:18px;margin:10px 0 0"></p>
+ <p class="muted" id="wMobileHint" style="margin:6px 0 0"></p></div></div>
 <div class="modal hide" id="vModal"><div class="card"><div class="hdr"><h2>Bet verification</h2><button class="ghost sm" onclick="vModal.classList.add('hide')">✕</button></div><div id="vBody"></div></div></div>
-<script src="/client.js"></script></body></html>
+<script src="/wallets.js"></script><script src="/client.js"></script></body></html>
