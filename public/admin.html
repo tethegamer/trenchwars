@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin — TrenchWars</title><link rel="stylesheet" href="/style.css"><meta name="robots" content="noindex"></head><body>
+<header><a class="logo" href="/">⚔ TRENCHWARS</a><span class="sp"></span><b>Admin</b></header><div class="wrap">
+<div class="card" id="loginBox" style="max-width:420px;margin:30px auto"><h2>Admin login</h2><input id="pw" type="password" placeholder="ADMIN_PASSWORD"><p><button id="go">Enter</button></p><p id="err" class="lose"></p></div>
+<div id="panel" class="hide grid g2"><div class="card"><h2>Prizes (owner-funded)</h2>
+<label class="muted">Title</label><input id="title"><label class="muted">Note (e.g. "Paid in $BONK to your connected wallet within 48h")</label><input id="note">
+<p class="muted">Prize per rank (leave blank to stop). Up to 10.</p><div id="items" class="grid"></div><p><button id="save">Save prizes</button> <span id="saved" class="win"></span></p></div>
+<div class="grid" style="align-content:start"><div class="card"><h3>This week <span id="tw" class="muted"></span></h3><div id="twRows"></div></div>
+<div class="card"><h3>Last week (pay these) <span id="lw" class="muted"></span></h3><div id="lwRows"></div></div><div class="card muted" id="stats"></div></div></div></div>
+<script>
+const $=s=>document.querySelector(s);let pw=sessionStorage.twAdmin||'';
+const call=async(u,b)=>{const r=await fetch(u,{method:b?'POST':'GET',headers:{'content-type':'application/json','x-admin-password':pw},body:b?JSON.stringify(b):undefined});const j=await r.json();if(!r.ok)throw new Error(j.error);return j};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const rows=r=>r.map(x=>`<div>#${x.rank} ${esc(x.name)} <b class="cr">${x.profit}</b><br><span class="mono">${x.wallet||'(no wallet — username account)'}</span></div>`).join('<hr style="border-color:#2a2350">')||'<span class=muted>none</span>';
+async function load(){try{const o=await call('/api/admin/overview');sessionStorage.twAdmin=pw;$('#loginBox').classList.add('hide');$('#panel').classList.remove('hide');
+$('#title').value=o.prizes.title;$('#note').value=o.prizes.note;$('#items').innerHTML=[...Array(10)].map((_,i)=>`<div class="row"><span style="flex:0 0 40px">#${i+1}</span><input data-i="${i}" value="${esc(o.prizes.items[i]?.prize||'')}" placeholder="e.g. 1,000,000 $BONK"></div>`).join('');
+$('#tw').textContent=o.thisWeek.week;$('#twRows').innerHTML=rows(o.thisWeek.rows);$('#lw').textContent=o.lastWeek.week;$('#lwRows').innerHTML=rows(o.lastWeek.rows);$('#stats').textContent=o.users+' registered players';}catch(e){$('#err').textContent=e.message}}
+$('#go').onclick=()=>{pw=$('#pw').value;load()};if(pw)load();
+$('#save').onclick=async()=>{const items=[...document.querySelectorAll('#items input')].map(i=>({prize:i.value.trim()}));const cut=items.findIndex(i=>!i.prize);try{await call('/api/admin/prizes',{title:$('#title').value,note:$('#note').value,items:cut<0?items:items.slice(0,cut)});$('#saved').textContent='Saved ✓';setTimeout(()=>$('#saved').textContent='',2000)}catch(e){alert(e.message)}};
+</script></body></html>

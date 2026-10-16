@@ -1,0 +1,27 @@
+{
+  "name": "trenchwars",
+  "version": "1.0.0",
+  "description": "Free-to-play memecoin community arcade: Crash, Coinflip, Blackjack, weekly leaderboard",
+  "main": "server.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/",
+    "screenshot": "node scripts/screenshot.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "bs58": "^5.0.0",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.3.0",
+    "tweetnacl": "^1.0.3"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.14.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

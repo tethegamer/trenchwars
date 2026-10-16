@@ -1,0 +1,48 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TrenchWars — free-to-play degen arcade</title><link rel="stylesheet" href="/style.css">
+<meta name="description" content="Free-to-play memecoin community game. No purchase necessary."></head><body>
+<header><a class="logo" href="/">⚔ TRENCHWARS</a><span class="sp"></span>
+<span id="who" class="pill hide"></span><span id="bal" class="pill cr hide"></span>
+<button id="claimBtn" class="alt hide">🎁 Claim 500</button>
+<button id="soundBtn" class="ghost" title="Sounds">🔇</button>
+<button id="logoutBtn" class="ghost hide">Exit</button></header>
+<div class="wrap">
+<div class="notice">🆓 FREE TO PLAY. No purchase necessary. Credits have no cash value and can't be bought or withdrawn. <a href="/rules">Official rules</a></div>
+
+<section id="login" class="card" style="max-width:520px;margin:30px auto;text-align:center">
+<h2>Enter the trenches 🪖</h2><p class="muted">Get <b class="cr">1,000 free credits</b> on signup + <b class="cr">500 free</b> every day. Top the weekly leaderboard for owner-funded memecoin prizes.</p>
+<button id="phantomBtn" style="width:100%">👻 Connect Phantom (sign message only)</button>
+<p class="muted">Signing proves wallet ownership. No transaction, no fees, no approvals.</p>
+<p class="muted">— or —</p>
+<div class="grid"><input id="uName" placeholder="username" autocomplete="username"><input id="uPass" type="password" placeholder="password (6+ chars)" autocomplete="current-password">
+<button id="userBtn" class="ghost">Play with username</button></div>
+<p id="loginErr" class="lose"></p></section>
+
+<section id="main" class="hide">
+<div class="tabs"><button data-t="crash" class="on">🚀 Crash</button><button data-t="flip">🪙 Coinflip</button><button data-t="bj">🃏 Blackjack</button><button data-t="lb">🏆 Leaderboard</button><button data-t="fair">🔐 Fairness</button></div>
+<div class="grid g2"><div>
+ <div id="t-crash" class="card tab"><h2>🚀 Crash</h2><div id="crashBox"><canvas id="crashCanvas"></canvas><div id="crashMult">1.00×</div></div>
+  <div class="row" style="margin-top:12px"><input id="crashBet" type="number" value="100" min="1"><input id="crashAuto" type="number" step="0.01" placeholder="auto cashout (opt.)"><button id="crashGo">BET</button></div>
+  <div id="crashHist" class="hist"></div></div>
+ <div id="t-flip" class="card tab hide"><h2>🪙 Coinflip <span class="muted">pays 1.96×</span></h2><div id="coin" class="coin">HEADS</div><p id="flipMsg" style="text-align:center;font-size:22px;font-weight:800;min-height:30px"></p>
+  <div class="row"><input id="flipBet" type="number" value="100" min="1"><button data-pick="heads" class="flipBtn">HEADS</button><button data-pick="tails" class="flipBtn alt">TAILS</button></div></div>
+ <div id="t-bj" class="card tab hide"><h2>🃏 Blackjack <span class="muted">BJ pays 3:2 · dealer stands on 17</span></h2>
+  <h3>Dealer <span id="dVal" class="muted"></span></h3><div id="dHand" class="hand"></div>
+  <h3>You <span id="pVal" class="muted"></span></h3><div id="pHand" class="hand"></div>
+  <p id="bjMsg" style="font-size:22px;font-weight:800;min-height:30px"></p>
+  <div class="row"><input id="bjBet" type="number" value="100" min="1"><button id="bjDeal">DEAL</button></div>
+  <div class="row" style="margin-top:8px"><button id="bjHit" class="ghost" disabled>HIT</button><button id="bjStand" class="ghost" disabled>STAND</button><button id="bjDouble" class="alt" disabled>DOUBLE</button></div></div>
+ <div id="t-lb" class="card tab hide"><h2>🏆 Weekly Leaderboard</h2><p class="muted">Ranked by net credits won this week. Resets every Monday 00:00 UTC · <span id="lbReset"></span></p><table><thead><tr><th>#</th><th>Player</th><th>Net won</th><th>Games</th></tr></thead><tbody id="lbBody"></tbody></table></div>
+ <div id="t-fair" class="card tab hide"><h2>🔐 Provably Fair</h2>
+  <p class="muted">Each result = HMAC_SHA256(serverSeed, clientSeed:nonce). You see the SHA-256 hash of the server seed <i>before</i> playing; rotate to reveal it and verify every past bet.</p>
+  <p>Server seed hash:<br><span id="fHash" class="mono"></span></p><p>Nonce: <b id="fNonce"></b></p>
+  <div class="row"><input id="fClient" placeholder="client seed"><button id="fSetClient" class="ghost">Set client seed</button></div>
+  <p><button id="fRotate" class="alt">Rotate &amp; reveal server seed</button></p><pre id="fRevealed" class="mono"></pre>
+  <h3>Verify</h3><div class="grid"><input id="vS" placeholder="server seed"><input id="vC" placeholder="client seed"><div class="row"><input id="vN" type="number" placeholder="nonce"><select id="vG"><option>crash</option><option>coinflip</option><option>blackjack</option></select><button id="vGo" class="ghost">Verify</button></div></div><pre id="vOut" class="mono"></pre></div>
+</div>
+<div class="grid" style="align-content:start">
+ <div class="card"><h3 id="prTitle">🏆 Prizes</h3><div id="prList"></div><p id="prNote" class="muted"></p><p class="muted">Prizes are funded by the site owner, free to win. No purchase necessary.</p></div>
+ <div class="card"><h3>🔥 Top this week</h3><div id="miniLb" class="muted">—</div></div>
+</div></div></section>
+<footer>TrenchWars is a free entertainment game. Credits are virtual, have no monetary value, cannot be purchased, sold, transferred or withdrawn. 18+. · <a href="/rules">Rules</a> · <a href="/admin">Admin</a></footer>
+</div><script src="/client.js"></script></body></html>
