@@ -15,12 +15,25 @@ A **free-to-play** memecoin community arcade with a dark neon degen look. Player
 - **Prizes and admin**: `/admin` is protected by the `ADMIN_PASSWORD` env var. Set the prize title, note and prizes for ranks 1–10. You can see this week's and last week's top 10 with wallet addresses so you can pay winners by hand.
 - `/rules` official rules page. Optional sound effects (off by default). Mobile friendly.
 
+## v2: premium redesign and retention (credits only)
+- **Design system**: dark theme with lime/cyan/violet accents, Inter + Space Grotesk fonts, sidebar nav, a live feed rail on desktop, a bottom tab bar on mobile, a live activity ticker, polished game cards, a 3D coin flip, a casino felt for Blackjack, a glowing Crash curve, confetti and toast notifications on wins, count-up balances, and optional sound.
+- **Daily login streak**: 500 → 600 → 700 → 800 → 1,000 → 1,200 → 1,500 credits a day (claim within 48h of your last claim to keep the streak).
+- **Levels and XP**: 1 XP per credit bet. Each level pays 100×level bonus credits. Ten rank badges, from Recruit 🪖 to Warlord 🐉.
+- **11 achievements** that pay credit bonuses (First Blood, Moonshot 10×, Natural, Hot Hand, Loyal Soldier, …).
+- **Referrals**: share `/?ref=CODE`, and both players get +500 credits.
+- **Live big-wins / activity feed** (`/api/feed`), plus a weekly reset countdown and prizes on the lobby and leaderboard (with a podium).
+
+## Provably fair, with public randomness
+- Every game has a 🛡️ Provably Fair badge, and `/fair` explains the system in plain English.
+- At each bet the server mixes the **latest finalized Solana blockhash** (polled every 15s from mainnet RPC; `SOLANA_RPC` to override, `PUBLIC_RANDOMNESS=off` to disable) into the seed: `HMAC_SHA256(serverSeed, clientSeed|blockhash:nonce)`. The blockhash and slot are recorded with every bet.
+- **My bets** history: one click on Verify recomputes any bet from the revealed server seed and checks it against the committed hash and the recorded result (`/api/fair/check/:id`).
+
 ## Run
 ```bash
 npm install
 ADMIN_PASSWORD=changeme npm start     # http://localhost:3000
-npm test                             # API + game + leaderboard tests (node:test)
-npm run screenshot                   # headless Chrome smoke test (needs CHROME_PATH or /usr/bin/google-chrome)
+npm test                             # API, games, leaderboard, streak/XP/achievements/referrals, fairness tests
+npm run screenshot                   # headless Chrome E2E (login, all games, verify) + desktop/mobile screenshots
 ```
 Env: `PORT` (3000), `ADMIN_PASSWORD` (required for /admin), `DATA_FILE` (default `data/db.json`).
 

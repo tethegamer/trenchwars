@@ -25,12 +25,12 @@ test('fair functions are deterministic and verifiable', () => {
   assert.ok(n / 20000 > 0.46 && n / 20000 < 0.52, 'p(>=2x)=' + n / 20000);
 });
 
-test('username signup gives 1000, daily claim 500 once per 24h', async () => {
+test('username signup gives 1000, daily streak claim once per 24h', async () => {
   const { token, user } = await signup('alice'); assert.equal(user.credits, 1000);
   assert.equal((await call('/api/auth/username', { username: 'alice', password: 'wrongpw' })).status, 401);
   assert.equal((await call('/api/claim', {}, token)).body.user.credits, 1500);
   assert.equal((await call('/api/claim', {}, token)).status, 429);
-  clock += 864e5 + 1; assert.equal((await call('/api/claim', {}, token)).body.user.credits, 2000);
+  clock += 864e5 + 1; const c2 = (await call('/api/claim', {}, token)).body; assert.equal(c2.streak, 2); assert.equal(c2.user.credits, 2100);
 });
 
 test('Phantom-style wallet signature login', async () => {

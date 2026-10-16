@@ -1,48 +1,142 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TrenchWars — free-to-play degen arcade</title><link rel="stylesheet" href="/style.css">
-<meta name="description" content="Free-to-play memecoin community game. No purchase necessary."></head><body>
-<header><a class="logo" href="/">⚔ TRENCHWARS</a><span class="sp"></span>
-<span id="who" class="pill hide"></span><span id="bal" class="pill cr hide"></span>
-<button id="claimBtn" class="alt hide">🎁 Claim 500</button>
-<button id="soundBtn" class="ghost" title="Sounds">🔇</button>
-<button id="logoutBtn" class="ghost hide">Exit</button></header>
-<div class="wrap">
-<div class="notice">🆓 FREE TO PLAY. No purchase necessary. Credits have no cash value and can't be bought or withdrawn. <a href="/rules">Official rules</a></div>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TrenchWars — Free-to-play provably fair arcade</title>
+<meta name="description" content="Free-to-play memecoin community arcade. Crash, Coinflip, Blackjack. Provably fair. No purchase necessary.">
+<meta name="theme-color" content="#08090d">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/style.css"></head><body>
+<canvas id="confetti"></canvas><div class="toasts" id="toasts"></div>
+<div class="app">
+ <header class="top">
+  <a class="logo" href="#/"><i>⚔</i><b>TrenchWars</b></a><span class="sp"></span>
+  <div id="walletBox" class="wallet hide"><span class="coin"></span><span id="bal" class="num">0</span><button id="claimTop" class="gold sm">🎁 <span id="claimTopTx">Claim</span></button></div>
+  <div id="uchip" class="uchip hide" onclick="location.hash='#/rewards'"><div class="lvl" id="lvlRing"><span id="rankIcon">🪖</span></div><div><div class="n" id="uname"></div><div class="r" id="urank"></div></div></div>
+  <button id="soundBtn" class="ghost sm" title="Sound">🔇</button>
+  <button id="loginTop" class="sm">Play free</button>
+  <button id="logoutBtn" class="ghost sm hide" title="Sign out"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H4"/></svg></button>
+ </header>
+ <div class="ticker"><div class="tr" id="ticker"></div></div>
+ <aside class="side"><nav class="nav">
+  <a href="#/" data-v="lobby"><span class="ic">🏠</span>Lobby</a>
+  <div class="sec-t">Games</div>
+  <a href="#/crash" data-v="crash"><span class="ic">🚀</span>Crash</a>
+  <a href="#/flip" data-v="flip"><span class="ic">🪙</span>Coinflip</a>
+  <a href="#/bj" data-v="bj"><span class="ic">🃏</span>Blackjack</a>
+  <div class="sec-t">Compete</div>
+  <a href="#/lb" data-v="lb"><span class="ic">🏆</span>Leaderboard</a>
+  <a href="#/rewards" data-v="rewards"><span class="ic">🎁</span>Rewards</a>
+  <a href="#/fair" data-v="fair"><span class="ic">🛡️</span>Provably Fair</a>
+ </nav><div class="free"><b class="cr">100% free to play.</b><br>No purchase necessary. Credits have no cash value and can't be bought or withdrawn. <a href="/rules">Rules</a></div></aside>
 
-<section id="login" class="card" style="max-width:520px;margin:30px auto;text-align:center">
-<h2>Enter the trenches 🪖</h2><p class="muted">Get <b class="cr">1,000 free credits</b> on signup + <b class="cr">500 free</b> every day. Top the weekly leaderboard for owner-funded memecoin prizes.</p>
-<button id="phantomBtn" style="width:100%">👻 Connect Phantom (sign message only)</button>
-<p class="muted">Signing proves wallet ownership. No transaction, no fees, no approvals.</p>
-<p class="muted">— or —</p>
-<div class="grid"><input id="uName" placeholder="username" autocomplete="username"><input id="uPass" type="password" placeholder="password (6+ chars)" autocomplete="current-password">
-<button id="userBtn" class="ghost">Play with username</button></div>
-<p id="loginErr" class="lose"></p></section>
+ <main>
+  <div class="notice">🆓 <span><b>No purchase necessary.</b> Credits have no cash value and can't be bought or withdrawn. <a href="/rules">Official rules</a></span></div>
 
-<section id="main" class="hide">
-<div class="tabs"><button data-t="crash" class="on">🚀 Crash</button><button data-t="flip">🪙 Coinflip</button><button data-t="bj">🃏 Blackjack</button><button data-t="lb">🏆 Leaderboard</button><button data-t="fair">🔐 Fairness</button></div>
-<div class="grid g2"><div>
- <div id="t-crash" class="card tab"><h2>🚀 Crash</h2><div id="crashBox"><canvas id="crashCanvas"></canvas><div id="crashMult">1.00×</div></div>
-  <div class="row" style="margin-top:12px"><input id="crashBet" type="number" value="100" min="1"><input id="crashAuto" type="number" step="0.01" placeholder="auto cashout (opt.)"><button id="crashGo">BET</button></div>
-  <div id="crashHist" class="hist"></div></div>
- <div id="t-flip" class="card tab hide"><h2>🪙 Coinflip <span class="muted">pays 1.96×</span></h2><div id="coin" class="coin">HEADS</div><p id="flipMsg" style="text-align:center;font-size:22px;font-weight:800;min-height:30px"></p>
-  <div class="row"><input id="flipBet" type="number" value="100" min="1"><button data-pick="heads" class="flipBtn">HEADS</button><button data-pick="tails" class="flipBtn alt">TAILS</button></div></div>
- <div id="t-bj" class="card tab hide"><h2>🃏 Blackjack <span class="muted">BJ pays 3:2 · dealer stands on 17</span></h2>
-  <h3>Dealer <span id="dVal" class="muted"></span></h3><div id="dHand" class="hand"></div>
-  <h3>You <span id="pVal" class="muted"></span></h3><div id="pHand" class="hand"></div>
-  <p id="bjMsg" style="font-size:22px;font-weight:800;min-height:30px"></p>
-  <div class="row"><input id="bjBet" type="number" value="100" min="1"><button id="bjDeal">DEAL</button></div>
-  <div class="row" style="margin-top:8px"><button id="bjHit" class="ghost" disabled>HIT</button><button id="bjStand" class="ghost" disabled>STAND</button><button id="bjDouble" class="alt" disabled>DOUBLE</button></div></div>
- <div id="t-lb" class="card tab hide"><h2>🏆 Weekly Leaderboard</h2><p class="muted">Ranked by net credits won this week. Resets every Monday 00:00 UTC · <span id="lbReset"></span></p><table><thead><tr><th>#</th><th>Player</th><th>Net won</th><th>Games</th></tr></thead><tbody id="lbBody"></tbody></table></div>
- <div id="t-fair" class="card tab hide"><h2>🔐 Provably Fair</h2>
-  <p class="muted">Each result = HMAC_SHA256(serverSeed, clientSeed:nonce). You see the SHA-256 hash of the server seed <i>before</i> playing; rotate to reveal it and verify every past bet.</p>
-  <p>Server seed hash:<br><span id="fHash" class="mono"></span></p><p>Nonce: <b id="fNonce"></b></p>
-  <div class="row"><input id="fClient" placeholder="client seed"><button id="fSetClient" class="ghost">Set client seed</button></div>
-  <p><button id="fRotate" class="alt">Rotate &amp; reveal server seed</button></p><pre id="fRevealed" class="mono"></pre>
-  <h3>Verify</h3><div class="grid"><input id="vS" placeholder="server seed"><input id="vC" placeholder="client seed"><div class="row"><input id="vN" type="number" placeholder="nonce"><select id="vG"><option>crash</option><option>coinflip</option><option>blackjack</option></select><button id="vGo" class="ghost">Verify</button></div></div><pre id="vOut" class="mono"></pre></div>
+  <!-- LOBBY -->
+  <section data-view="lobby">
+   <div class="hero">
+    <div><span class="tag live">Weekly war is live</span>
+     <h1 style="margin-top:12px">Climb the trenches.<br><em>Win real memecoin prizes.</em></h1>
+     <p>Free credits every day. Provably fair games. The top players each week split owner-funded prizes, and you never pay a cent.</p>
+     <div class="row"><button class="lg" id="heroCta">Play free now →</button><a class="pf" href="#/fair"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><span>Provably fair</span></a></div>
+    </div>
+    <div class="prizebox deskonly"><div class="hdr" style="margin-bottom:8px"><b class="fd" id="prTitle">Weekly Prizes</b><span class="muted">resets in</span></div>
+     <div class="cd" id="cd"></div><div id="prList" style="margin-top:10px"></div><div class="muted" id="prNote" style="margin-top:6px"></div></div>
+   </div>
+   <div class="hdr" style="margin:26px 0 12px"><h2>Games</h2><span class="muted">All provably fair · free credits only</span></div>
+   <div class="games">
+    <a class="gcard g-crash" href="#/crash"><span class="pf">🛡️ <span>Provably fair</span></span><div class="art">🚀</div><h3>Crash</h3><div class="muted">Ride the curve. Cash out before it rugs.</div></a>
+    <a class="gcard g-flip" href="#/flip"><span class="pf">🛡️ <span>Provably fair</span></span><div class="art">🪙</div><h3>Coinflip</h3><div class="muted">50/50. Pays 1.96×.</div></a>
+    <a class="gcard g-bj" href="#/bj"><span class="pf">🛡️ <span>Provably fair</span></span><div class="art">🃏</div><h3>Blackjack</h3><div class="muted">Beat the dealer. BJ pays 3:2.</div></a>
+   </div>
+   <div class="card mobonly" style="margin-top:14px"><div class="hdr" style="margin-bottom:10px"><h3 id="prTitle3">Weekly Prizes</h3><a href="#/lb" class="muted">Leaderboard →</a></div><div class="cd" id="cd3"></div><div id="prList3" style="margin-top:8px"></div></div>
+   <div class="grid g2" style="margin-top:18px">
+    <div class="card"><div class="hdr" style="margin:0"><div><h3>🔥 Daily streak</h3><div class="muted">Come back every day. Rewards grow up to 1,500/day.</div></div><span class="bignum" id="streakNum">0</span></div>
+     <div class="streak" id="streakDays"></div><button class="gold block" id="claimBig">Claim daily reward</button></div>
+    <div class="card"><div class="hdr"><h3>🏆 Top this week</h3><a href="#/lb" class="muted">View all →</a></div><div id="miniLb" class="feed"></div></div>
+   </div>
+  </section>
+
+  <!-- CRASH -->
+  <section data-view="crash" class="hide"><div class="gshell">
+   <div class="gctl"><div><label class="lbl">Bet amount</label><div class="betbox"><input id="crashBet" type="number" value="100" min="1"><button data-half="crashBet">½</button><button data-dbl="crashBet">2×</button></div></div>
+    <div><label class="lbl">Auto cash out</label><div class="betbox"><input id="crashAuto" type="number" step="0.01" placeholder="off"><button style="pointer-events:none">×</button></div></div>
+    <button id="crashGo" class="lg block">Place bet</button>
+    <div class="stat"><span>Potential win</span><b id="crashPot">—</b></div>
+    <div><label class="lbl">Your recent rounds</label><div id="crashHist" class="hist"></div></div></div>
+   <div class="gstage"><div class="hdr"><h2>🚀 Crash</h2><a class="pf" href="#/fair">🛡️ Provably fair</a></div>
+    <div id="crashBox"><canvas id="crashCanvas"></canvas><div id="crashMult">1.00×<small>Place a bet to launch</small></div></div></div></div></section>
+
+  <!-- COINFLIP -->
+  <section data-view="flip" class="hide"><div class="gshell">
+   <div class="gctl"><div><label class="lbl">Bet amount</label><div class="betbox"><input id="flipBet" type="number" value="100" min="1"><button data-half="flipBet">½</button><button data-dbl="flipBet">2×</button></div></div>
+    <div><label class="lbl">Pick a side</label><div class="seg" id="flipSeg"><button data-pick="heads" class="on">🟡 Heads</button><button data-pick="tails">🟣 Tails</button></div></div>
+    <button id="flipGo" class="lg block">Flip</button>
+    <div class="stat"><span>Payout</span><b>1.96×</b></div><div class="stat"><span>Win streak</span><b id="flipStreak">0</b></div>
+    <div><label class="lbl">Recent flips</label><div id="flipHist" class="hist"></div></div></div>
+   <div class="gstage"><div class="hdr"><h2>🪙 Coinflip</h2><a class="pf" href="#/fair">🛡️ Provably fair</a></div>
+    <div class="coinwrap"><div class="coin3d" id="coin"><div class="face h"><div style="text-align:center"><span>🐸</span>HEADS</div></div><div class="face t"><div style="text-align:center"><span>🐶</span>TAILS</div></div></div></div>
+    <div class="result" id="flipMsg"></div></div></div></section>
+
+  <!-- BLACKJACK -->
+  <section data-view="bj" class="hide"><div class="gshell">
+   <div class="gctl"><div><label class="lbl">Bet amount</label><div class="betbox"><input id="bjBet" type="number" value="100" min="1"><button data-half="bjBet">½</button><button data-dbl="bjBet">2×</button></div></div>
+    <button id="bjDeal" class="lg block">Deal</button>
+    <div class="grid g3" style="gap:8px"><button id="bjHit" class="sec" disabled>Hit</button><button id="bjStand" class="sec" disabled>Stand</button><button id="bjDouble" class="vi" disabled>2×</button></div>
+    <div class="muted">Dealer stands on all 17s · Blackjack pays 3:2 · Double on first two cards</div></div>
+   <div class="gstage"><div class="hdr"><h2>🃏 Blackjack</h2><a class="pf" href="#/fair">🛡️ Provably fair</a></div>
+    <div class="felt"><div><h4>Dealer <span class="v" id="dVal">–</span></h4><div id="dHand" class="hand"></div></div>
+     <div class="mid" id="bjMsg">BLACKJACK PAYS 3 TO 2</div>
+     <div><h4>You <span class="v" id="pVal">–</span></h4><div id="pHand" class="hand"></div></div></div></div></div></section>
+
+  <!-- LEADERBOARD -->
+  <section data-view="lb" class="hide">
+   <div class="hdr"><div><h2>🏆 Weekly Leaderboard</h2><div class="muted">Ranked by net credits won. Resets every Monday 00:00 UTC.</div></div><div class="cd" id="cd2"></div></div>
+   <div class="podium" id="podium"></div>
+   <div class="grid" style="grid-template-columns:2fr 1fr"><div class="card" style="padding:8px"><table><thead><tr><th>#</th><th>Player</th><th>Net won</th><th>Wagered</th><th>Games</th></tr></thead><tbody id="lbBody"></tbody></table></div>
+   <div class="card"><h3 id="prTitle2">Prizes</h3><div id="prList2" style="margin-top:8px"></div><p class="muted">Prizes are funded by the site owner and free to win. No purchase necessary.</p></div></div>
+  </section>
+
+  <!-- REWARDS -->
+  <section data-view="rewards" class="hide">
+   <div class="grid g2">
+    <div class="card"><div class="row"><div class="lvl" id="lvlBig" style="width:64px;height:64px;font-size:28px"><span id="rankIconBig">🪖</span></div><div class="f"><div class="muted">Rank</div><h2 id="rankName">Recruit</h2><div class="muted" id="lvlTx"></div></div></div>
+     <div class="xpbar" style="margin-top:14px"><i id="xpFill" style="width:0"></i></div><div class="stat" style="margin-top:6px"><span id="xpTx"></span><span>Level-up bonus: <b class="cr" id="lvlBonus"></b></span></div>
+     <p class="muted">Earn 1 XP per credit you bet. Every level pays out bonus credits.</p></div>
+    <div class="card"><h3>🤝 Invite friends</h3><p class="muted">You and your friend each get <b class="cr">+500 credits</b> when they sign up with your link.</p>
+     <div class="refbox"><code id="refCode">——</code><button class="sm" id="copyRef">Copy link</button></div><p class="muted" id="refStats"></p></div>
+   </div>
+   <div class="card" style="margin-top:16px"><div class="hdr"><h3>🔥 Daily streak</h3><span class="muted">Miss a day and it resets</span></div><div class="streak" id="streakDays2"></div></div>
+   <div class="card" style="margin-top:16px"><div class="hdr"><h3>🎖️ Achievements</h3><span class="muted" id="achCount"></span></div><div class="ach" id="achGrid"></div></div>
+  </section>
+
+  <!-- FAIRNESS -->
+  <section data-view="fair" class="hide">
+   <div class="hdr"><div><h2>🛡️ Provably Fair</h2><div class="muted">Check every result yourself. You never have to trust us. <a href="/fair">How it works →</a></div></div></div>
+   <div class="grid g2">
+    <div class="card"><h3>Your active seeds</h3>
+     <label class="lbl" style="margin-top:12px">Server seed hash (committed)</label><div class="mono" id="fHash"></div>
+     <label class="lbl" style="margin-top:12px">Client seed (yours, editable)</label><div class="row"><input id="fClient" class="f"><button id="fSetClient" class="sec">Save</button></div>
+     <div class="stat" style="margin-top:12px"><span>Nonce (bets on this seed)</span><b id="fNonce">0</b></div>
+     <div class="stat"><span>Public randomness (latest Solana block)</span><b id="fPub" class="mono">—</b></div>
+     <button id="fRotate" class="vi block" style="margin-top:14px">Rotate seed and reveal the old one</button></div>
+    <div class="card"><h3>Manual verifier</h3><div class="grid" style="gap:8px;margin-top:10px"><input id="vS" placeholder="server seed"><input id="vC" placeholder="client seed"><input id="vP" placeholder="public seed (Solana blockhash, optional)"><div class="row"><input id="vN" class="f" type="number" placeholder="nonce"><select id="vG" class="f"><option>crash</option><option>coinflip</option><option>blackjack</option></select><button id="vGo" class="sec">Verify</button></div></div><pre id="vOut" class="code" style="margin-top:10px;max-height:160px">—</pre></div>
+   </div>
+   <div class="card" style="margin-top:16px;padding:8px"><div class="hdr" style="padding:10px 12px 0"><h3>My bets</h3><span class="muted">One-click verify. Rotate your seed first to reveal it.</span></div>
+    <table><thead><tr><th>Game</th><th>Bet</th><th>Result</th><th>Payout</th><th>Nonce</th><th></th></tr></thead><tbody id="histBody"></tbody></table></div>
+  </section>
+  <footer>TrenchWars is a free entertainment game. Credits are virtual, have no monetary value, and can't be purchased, sold, transferred, or withdrawn. 18+. <br><a href="/rules">Official rules</a> · <a href="/fair">Provably fair</a> · <a href="/admin">Admin</a></footer>
+ </main>
+
+ <aside class="rail"><div class="tabs2"><button class="on" data-feed="big">🔥 Big wins</button><button data-feed="all">⚡ Live</button></div><div id="feed" class="feed"></div></aside>
 </div>
-<div class="grid" style="align-content:start">
- <div class="card"><h3 id="prTitle">🏆 Prizes</h3><div id="prList"></div><p id="prNote" class="muted"></p><p class="muted">Prizes are funded by the site owner, free to win. No purchase necessary.</p></div>
- <div class="card"><h3>🔥 Top this week</h3><div id="miniLb" class="muted">—</div></div>
-</div></div></section>
-<footer>TrenchWars is a free entertainment game. Credits are virtual, have no monetary value, cannot be purchased, sold, transferred or withdrawn. 18+. · <a href="/rules">Rules</a> · <a href="/admin">Admin</a></footer>
-</div><script src="/client.js"></script></body></html>
+<nav class="bnav"><a href="#/" data-v="lobby"><span class="ic">🏠</span>Lobby</a><a href="#/crash" data-v="crash"><span class="ic">🚀</span>Crash</a><a href="#/flip" data-v="flip"><span class="ic">🪙</span>Flip</a><a href="#/bj" data-v="bj"><span class="ic">🃏</span>21</a><a href="#/lb" data-v="lb"><span class="ic">🏆</span>Ranks</a></nav>
+
+<div class="modal hide" id="authModal"><div class="card"><div class="hdr"><h2>Enter the trenches</h2><button class="ghost sm" onclick="closeAuth()">✕</button></div>
+ <p class="tx2" style="margin-top:0">Get <b class="cr">1,000 free credits</b> now, and up to <b class="cr">1,500 free</b> every day.</p>
+ <div id="refNote" class="notice hide" style="margin-bottom:12px">🤝 Invite applied: <b>+500 bonus credits</b></div>
+ <button id="phantomBtn" class="vi block lg">👻 Connect Phantom</button><p class="muted" style="text-align:center;margin:8px 0 14px">You only sign a message. No transaction, no fees, no approvals.</p>
+ <div class="row" style="margin:6px 0 14px"><hr class="f" style="border:0;border-top:1px solid var(--line2)"><span class="muted">or</span><hr class="f" style="border:0;border-top:1px solid var(--line2)"></div>
+ <div class="grid" style="gap:8px"><input id="uName" placeholder="Username" autocomplete="username"><input id="uPass" type="password" placeholder="Password (6+ chars)" autocomplete="current-password"><button id="userBtn" class="block">Continue with username</button></div>
+ <p id="loginErr" class="lose" style="min-height:20px"></p><p class="muted" style="text-align:center;margin:0">No purchase necessary. Credits have no cash value.</p></div></div>
+<div class="modal hide" id="vModal"><div class="card"><div class="hdr"><h2>Bet verification</h2><button class="ghost sm" onclick="vModal.classList.add('hide')">✕</button></div><div id="vBody"></div></div></div>
+<script src="/client.js"></script></body></html>

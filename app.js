@@ -1,6 +1,6 @@
 const express = require('express'), crypto = require('crypto'), cookieParser = require('cookie-parser');
 const nacl = require('tweetnacl'), bs58 = require('bs58');
-const F = require('./fair'), DB = require('./db');
+const F = require('./fair'), DB = require('./db'), P = require('./progress');
 
 const START = 1000, DAILY = 500, DAY = 864e5, MIN_BET = 1, MAX_BET = 100000;
 
@@ -12,19 +12,38 @@ function weekKey(t) { // Monday 00:00 UTC of the week containing t
 function createApp(opts = {}) {
   const db = DB.open(opts.dbFile), D = db.data;
   const now = opts.now || (() => Date.now());
+  const getPublic = opts.publicRandomness || (() => null);
   const adminPassword = opts.adminPassword ?? process.env.ADMIN_PASSWORD;
   const app = express();
   app.use(express.json({ limit: '20kb' })); app.use(cookieParser());
   app.locals.db = db;
 
   // ---------- users / auth ----------
-  const pub = u => ({ id: u.id, name: u.name, wallet: u.wallet || null, credits: u.credits,
-    nextClaim: Math.max(0, (u.lastClaim || 0) + DAY - now()),
-    seed: { serverSeedHash: u.seed.hash, clientSeed: u.seed.client, nonce: u.seed.nonce } });
+  const pub = u => { const lvl = P.levelFor(u.xp || 0), ns = (u.lastClaim && now() <= u.lastClaim + 2 * DAY) ? (u.streak || 0) + 1 : 1;
+    const unseen = u.unseen || []; u.unseen = [];
+    return { id: u.id, name: u.name, wallet: u.wallet || null, credits: u.credits,
+    nextClaim: Math.max(0, (u.lastClaim || 0) + DAY - now()), streak: u.lastClaim && now() <= u.lastClaim + 2 * DAY ? u.streak || 0 : 0,
+    nextClaimAmount: P.streakReward(ns), streakRewards: P.STREAK_REWARDS,
+    xp: u.xp || 0, level: lvl, rank: P.rankFor(lvl), levelXp: P.xpForLevel(lvl), nextLevelXp: P.xpForLevel(lvl + 1),
+    achievements: u.achievements || [], refCode: u.refCode, refs: u.refs || 0, games: u.games || 0, unseen,
+    seed: { serverSeedHash: u.seed.hash, clientSeed: u.seed.client, nonce: u.seed.nonce } }; };
+  const pushFeed = ev => { (D.feed ??= []).unshift({ t: now(), ...ev }); D.feed.length = Math.min(D.feed.length, 60); };
+  const note = (u, ev) => (u.unseen ??= []).push(ev);
+  function grantAch(u, ctx) {
+    u.achievements ??= [];
+    for (const id of P.checkAchievements(u.achievements, ctx)) { const [title, desc, reward] = P.ACHIEVEMENTS[id];
+      u.achievements.push(id); u.credits += reward; note(u, { type: 'achievement', id, title, desc, reward }); pushFeed({ type: 'achievement', name: u.name, title }); }
+  }
   const seedPair = () => { const s = F.newSeed(); return { server: s, hash: F.sha256(s), client: crypto.randomBytes(8).toString('hex'), nonce: 0 }; };
-  function createUser(fields) {
+  function createUser(fields, refArg) {
     const id = crypto.randomUUID();
-    const u = D.users[id] = { id, credits: START, created: now(), lastClaim: 0, seed: seedPair(), ...fields };
+    let refCode; do refCode = crypto.randomBytes(3).toString('hex').toUpperCase(); while (Object.values(D.users).some(x => x.refCode === refCode));
+    const u = D.users[id] = { id, credits: START, created: now(), lastClaim: 0, seed: seedPair(), xp: 0, games: 0, streak: 0, achievements: [], refCode, refs: 0, ...fields };
+    const ref = String(refArg || '').toUpperCase(), referrer = ref && Object.values(D.users).find(x => x.refCode === ref && x.id !== id);
+    if (referrer) { u.referredBy = referrer.id; u.credits += P.REF_BONUS; referrer.credits += P.REF_BONUS; referrer.refs = (referrer.refs || 0) + 1;
+      note(u, { type: 'referral', reward: P.REF_BONUS }); note(referrer, { type: 'referral', reward: P.REF_BONUS, name: u.name });
+      grantAch(referrer, { refs: referrer.refs }); }
+    pushFeed({ type: 'join', name: u.name });
     return u;
   }
   function login(res, u) {
@@ -45,7 +64,7 @@ function createApp(opts = {}) {
     if (!password || password.length < 6) return res.status(400).json({ error: 'Password must be 6+ chars' });
     let u = Object.values(D.users).find(x => !x.wallet && x.name.toLowerCase() === username.toLowerCase());
     if (u) { if (hashPw(password, u.salt) !== u.pw) return res.status(401).json({ error: 'Wrong password (or name taken)' }); }
-    else { const salt = crypto.randomBytes(16).toString('hex'); u = createUser({ name: username, salt, pw: hashPw(password, salt) }); }
+    else { const salt = crypto.randomBytes(16).toString('hex'); u = createUser({ name: username, salt, pw: hashPw(password, salt) }, req.body.ref); }
     login(res, u);
   });
   app.get('/api/auth/nonce', (req, res) => {
@@ -62,14 +81,16 @@ function createApp(opts = {}) {
     try { ok = nacl.sign.detached.verify(new TextEncoder().encode(n.message), bs58.decode(signature), bs58.decode(address)); } catch {}
     if (!ok) return res.status(401).json({ error: 'Signature invalid' });
     delete D.nonces[address];
-    const u = Object.values(D.users).find(x => x.wallet === address) || createUser({ wallet: address, name: address.slice(0, 4) + '…' + address.slice(-4) });
+    const u = Object.values(D.users).find(x => x.wallet === address) || createUser({ wallet: address, name: address.slice(0, 4) + '…' + address.slice(-4) }, req.body.ref);
     login(res, u);
   });
   app.post('/api/auth/logout', (req, res) => { delete D.sessions[req.cookies.tw]; res.clearCookie('tw'); res.json({ ok: true }); });
   app.get('/api/me', auth, (req, res) => res.json({ user: pub(req.user) }));
   app.post('/api/claim', auth, (req, res) => {
-    const u = req.user; if (now() < (u.lastClaim || 0) + DAY) return res.status(429).json({ error: 'Already claimed', user: pub(u) });
-    u.lastClaim = now(); u.credits += DAILY; db.save(); res.json({ claimed: DAILY, user: pub(u) });
+    const u = req.user, st = P.nextStreak(u, now()); if (!st) return res.status(429).json({ error: 'Already claimed', user: pub(u) });
+    const amt = P.streakReward(st); u.streak = st; u.lastClaim = now(); u.credits += amt;
+    if (st >= 3) pushFeed({ type: 'streak', name: u.name, streak: st });
+    grantAch(u, { streak: st }); db.save(); res.json({ claimed: amt, streak: st, user: pub(u) });
   });
 
   // ---------- fairness ----------
@@ -82,10 +103,23 @@ function createApp(opts = {}) {
   app.post('/api/fair/rotate', auth, (req, res) => {
     const u = req.user; if (busy(u)) return res.status(409).json({ error: 'Finish your active game first' });
     const old = { serverSeed: u.seed.server, serverSeedHash: u.seed.hash, clientSeed: u.seed.client, noncesUsed: u.seed.nonce };
-    u.seed = { ...seedPair(), client: u.seed.client }; db.save(); res.json({ revealed: old, user: pub(u) });
+    (D.revealed ??= {})[u.seed.hash] = u.seed.server; u.seed = { ...seedPair(), client: u.seed.client }; db.save(); res.json({ revealed: old, user: pub(u) });
   });
+  app.get('/api/history', auth, (req, res) => res.json({ history: (req.user.history || []).map(h => ({ ...h, revealed: !!(D.revealed || {})[h.fair.serverSeedHash] })), user: pub(req.user) }));
+  // One-click verify: recompute a past bet from the revealed server seed and compare with what was recorded
+  app.get('/api/fair/check/:id', auth, (req, res) => {
+    const h = (req.user.history || []).find(x => x.id === req.params.id); if (!h) return res.status(404).json({ error: 'Bet not found' });
+    const seed = (D.revealed || {})[h.fair.serverSeedHash];
+    if (!seed) return res.json({ revealed: false, message: 'Server seed still active — rotate your seed to reveal it, then verify.' });
+    const f = h.fair, cs = f.combinedClientSeed; let recomputed, ok;
+    if (h.game === 'crash') { recomputed = { crashPoint: F.crashPoint(seed, cs, f.nonce) }; ok = recomputed.crashPoint === h.result.crashPoint; }
+    if (h.game === 'coinflip') { recomputed = { side: F.coinflip(seed, cs, f.nonce) }; ok = recomputed.side === h.result.side; }
+    if (h.game === 'blackjack') { const d = F.shuffledDeck(seed, cs, f.nonce).map(F.cardName); recomputed = { cards: d.slice(0, h.result.cards.length) }; ok = recomputed.cards.join() === h.result.cards.join(); }
+    res.json({ revealed: true, ok, serverSeed: seed, hashMatches: F.sha256(seed) === f.serverSeedHash, recorded: h.result, recomputed, inputs: { serverSeed: seed, clientSeed: f.clientSeed, publicSeed: f.publicSeed, solanaSlot: f.solanaSlot, combinedClientSeed: cs, nonce: f.nonce } });
+  });
+  app.get('/api/fair/public', (req, res) => res.json({ source: 'Solana mainnet latest finalized blockhash', current: getPublic() }));
   app.get('/api/fair/verify', (req, res) => {
-    const { serverSeed, clientSeed, nonce, game } = req.query, n = +nonce;
+    const { serverSeed, nonce, game, publicSeed } = req.query, n = +nonce, clientSeed = publicSeed ? `${req.query.clientSeed}|${publicSeed}` : req.query.clientSeed;
     const out = { serverSeedHash: F.sha256(serverSeed || '') };
     if (game === 'crash') out.crashPoint = F.crashPoint(serverSeed, clientSeed, n);
     if (game === 'coinflip') out.result = F.coinflip(serverSeed, clientSeed, n);
@@ -99,16 +133,25 @@ function createApp(opts = {}) {
     if (!(bet >= MIN_BET && bet <= MAX_BET)) { res.status(400).json({ error: `Bet ${MIN_BET}-${MAX_BET}` }); return null; }
     if (bet > req.user.credits) { res.status(400).json({ error: 'Not enough credits — claim your free daily drop' }); return null; }
     req.user.credits -= bet; const u = req.user;
-    return { bet, nonce: u.seed.nonce++, serverSeed: u.seed.server, clientSeed: u.seed.client, hash: u.seed.hash };
+    const pubR = getPublic(); // public randomness (latest finalized Solana blockhash) mixed into the client seed
+    const rawClient = u.seed.client, clientSeed = pubR ? `${rawClient}|${pubR.hash}` : rawClient;
+    return { bet, nonce: u.seed.nonce++, serverSeed: u.seed.server, clientSeed, rawClient, publicSeed: pubR?.hash || null, slot: pubR?.slot || null, hash: u.seed.hash };
   }
-  function settle(u, bet, payout, game) {
-    u.credits += payout;
+  function settle(u, bet, payout, game, extra = {}) {
+    u.credits += payout; u.games = (u.games || 0) + 1;
+    const before = P.levelFor(u.xp || 0); u.xp = (u.xp || 0) + bet; const after = P.levelFor(u.xp);
+    for (let L = before + 1; L <= after; L++) { const b = P.levelUpBonus(L); u.credits += b; note(u, { type: 'level', level: L, rank: P.rankFor(L), reward: b }); if (P.rankFor(L).minLevel === L) pushFeed({ type: 'rank', name: u.name, rank: P.rankFor(L).name }); }
+    if (game === 'coinflip') u.flipStreak = payout > 0 ? (u.flipStreak || 0) + 1 : 0;
+    const mult = bet ? payout / bet : 0;
+    pushFeed({ type: 'bet', name: u.name, game, bet, payout, mult: Math.round(mult * 100) / 100 });
+    if (extra.fair) { (u.history ??= []).unshift({ id: crypto.randomBytes(6).toString('hex'), t: now(), game, bet, payout, mult: Math.round(mult * 100) / 100, result: extra.result, fair: fairInfo(extra.fair) }); u.history.length = Math.min(u.history.length, 50); }
+    grantAch(u, { ...extra, game, bet, payout, mult, games: u.games, level: after, flipStreak: u.flipStreak || 0 });
     const wk = D.weeks[weekKey(now())] ??= {};
     const s = wk[u.id] ??= { wagered: 0, won: 0, profit: 0, games: 0 };
     s.wagered += bet; s.won += payout; s.profit += payout - bet; s.games++;
     db.save();
   }
-  const fairInfo = g => ({ serverSeedHash: g.hash, clientSeed: g.clientSeed, nonce: g.nonce });
+  const fairInfo = g => ({ serverSeedHash: g.hash, clientSeed: g.rawClient ?? g.clientSeed, publicSeed: g.publicSeed || null, solanaSlot: g.slot || null, combinedClientSeed: g.clientSeed, nonce: g.nonce });
 
   // Coinflip — 1.96x
   app.post('/api/coinflip', auth, (req, res) => {
@@ -116,7 +159,7 @@ function createApp(opts = {}) {
     if (busy(req.user) && req.user.bj && !req.user.bj.done) return res.status(409).json({ error: 'Finish blackjack hand' });
     const g = takeBet(req, res); if (!g) return;
     const result = F.coinflip(g.serverSeed, g.clientSeed, g.nonce), win = result === pick, payout = win ? Math.floor(g.bet * 1.96) : 0;
-    settle(req.user, g.bet, payout, 'coinflip');
+    settle(req.user, g.bet, payout, 'coinflip', { fair: g, result: { side: result, pick } });
     res.json({ result, win, payout, fair: fairInfo(g), user: pub(req.user) });
   });
 
@@ -132,8 +175,8 @@ function createApp(opts = {}) {
   function crashResolve(u) {
     const c = u.crash; if (!c || c.done) return null;
     const m = F.crashAt(now() - c.start);
-    if (c.auto && c.auto < c.cp && m >= c.auto) { c.done = true; c.cashedAt = c.auto; c.payout = Math.floor(c.bet * c.auto); settle(u, c.bet, c.payout, 'crash'); }
-    else if (m >= c.cp) { c.done = true; c.cashedAt = null; c.payout = 0; settle(u, c.bet, 0, 'crash'); }
+    if (c.auto && c.auto < c.cp && m >= c.auto) { c.done = true; c.cashedAt = c.auto; c.payout = Math.floor(c.bet * c.auto); settle(u, c.bet, c.payout, 'crash', { fair: c, result: { crashPoint: c.cp, cashedAt: c.auto } }); }
+    else if (m >= c.cp) { c.done = true; c.cashedAt = null; c.payout = 0; settle(u, c.bet, 0, 'crash', { fair: c, result: { crashPoint: c.cp, cashedAt: null } }); }
     return m;
   }
   const crashView = u => { const c = u.crash; return { done: c.done, current: c.done ? undefined : F.crashAt(now() - c.start), crashPoint: c.done ? c.cp : undefined, cashedAt: c.cashedAt, payout: c.payout, fair: fairInfo(c), user: pub(u) }; };
@@ -141,7 +184,7 @@ function createApp(opts = {}) {
   app.post('/api/crash/cashout', auth, (req, res) => {
     const u = req.user, c = u.crash; if (!c || c.done) return res.status(400).json({ error: 'No active round' });
     const m = crashResolve(u);
-    if (!c.done) { c.done = true; c.cashedAt = m; c.payout = Math.floor(c.bet * m); settle(u, c.bet, c.payout, 'crash'); }
+    if (!c.done) { c.done = true; c.cashedAt = m; c.payout = Math.floor(c.bet * m); settle(u, c.bet, c.payout, 'crash', { fair: c, result: { crashPoint: c.cp, cashedAt: m } }); }
     res.json(crashView(u));
   });
 
@@ -150,7 +193,7 @@ function createApp(opts = {}) {
     return { done: b.done, bet: b.bet, player: b.player.map(F.cardName), playerValue: F.handValue(b.player),
       dealer: hideHole ? [F.cardName(b.dealer[0]), '??'] : b.dealer.map(F.cardName), dealerValue: hideHole ? F.handValue([b.dealer[0]]) : F.handValue(b.dealer),
       canDouble: !b.done && b.player.length === 2 && u.credits >= b.bet, outcome: b.outcome, payout: b.payout, fair: fairInfo(b), user: pub(u) }; };
-  function bjFinish(u, outcome, mult) { const b = u.bj; b.done = true; b.outcome = outcome; b.payout = Math.floor(b.bet * mult); settle(u, b.bet, b.payout, 'blackjack'); }
+  function bjFinish(u, outcome, mult) { const b = u.bj; b.dealOrder = b.deck.slice(0, b.pos); b.done = true; b.outcome = outcome; b.payout = Math.floor(b.bet * mult); settle(u, b.bet, b.payout, 'blackjack', { outcome, doubled: !!b.doubled, fair: b, result: { outcome, cards: b.dealOrder.map(F.cardName), player: b.player.map(F.cardName), dealer: b.dealer.map(F.cardName) } }); }
   function bjDealer(u) {
     const b = u.bj; while (F.handValue(b.dealer) < 17) b.dealer.push(b.deck[b.pos++]);
     const p = F.handValue(b.player), d = F.handValue(b.dealer);
@@ -176,7 +219,7 @@ function createApp(opts = {}) {
     const b = bjActive(req, res); if (!b) return; const u = req.user;
     if (b.player.length !== 2) return res.status(400).json({ error: 'Double only on first two cards' });
     if (u.credits < b.bet) return res.status(400).json({ error: 'Not enough credits to double' });
-    u.credits -= b.bet; b.bet *= 2; b.player.push(b.deck[b.pos++]);
+    u.credits -= b.bet; b.bet *= 2; b.doubled = true; b.player.push(b.deck[b.pos++]);
     if (F.handValue(b.player) > 21) bjFinish(u, 'bust', 0); else bjDealer(u);
     res.json(bjView(u));
   });
@@ -194,6 +237,9 @@ function createApp(opts = {}) {
     const key = req.query.week || weekKey(now());
     res.json({ week: key, resetsAt: nextReset(), lastWeek: prevKey(), rows: board(key).map(({ wallet, ...r }) => ({ ...r, wallet: wallet ? wallet.slice(0, 4) + '…' + wallet.slice(-4) : null })), prizes: D.prizes });
   });
+  app.get('/api/feed', (req, res) => { const f = D.feed || [];
+    res.json({ activity: f.slice(0, 25), bigWins: f.filter(e => e.type === 'bet' && e.payout - e.bet >= 100).slice(0, 15) }); });
+  app.get('/api/meta', (req, res) => res.json({ achievements: Object.fromEntries(Object.entries(P.ACHIEVEMENTS).map(([k, v]) => [k, { title: v[0], desc: v[1], reward: v[2] }])), ranks: P.RANKS, streakRewards: P.STREAK_REWARDS, refBonus: P.REF_BONUS }));
   app.get('/api/prizes', (req, res) => res.json(D.prizes));
 
   const admin = (req, res, next) => {
